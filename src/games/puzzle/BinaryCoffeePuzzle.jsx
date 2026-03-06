@@ -18,7 +18,7 @@ const PIECE_CONTENT = [
   { icon: "🌸", label: "Flor" },
   { icon: "💻", label: "Binary" },
   { icon: "✨", label: "Magia" },
-  { icon: "B&C", label: "Logo", isCenter: true },
+  { icon: "https://etxkdzwzeowufgwbotrn.supabase.co/storage/v1/object/public/assets/LogoB.png", label: "Binary&Coffee", isCenter: true, isImage: true },
   { icon: "💜", label: "Amor" },
   { icon: "🫶", label: "Unión" },
   { icon: "🌺", label: "Rosa" },
@@ -147,7 +147,10 @@ function SolutionGuide({ currentPieces }) {
             }}>
               {isInPlace && <div style={{ position: "absolute", top: "2px", right: "3px", fontSize: "0.45rem", color: "#C8860A" }}>✓</div>}
               <div style={{ fontSize: piece.isCenter ? "0.65rem" : "0.95rem", fontWeight: piece.isCenter ? "900" : "normal", color: isInPlace ? "#C8860A" : "#e8dcc8", lineHeight: 1, marginBottom: "1px" }}>
-                {piece.icon}
+                {piece.isImage
+                  ? <img src={piece.icon} alt="Logo" style={{ width: "28px", height: "28px", objectFit: "contain" }} />
+                  : piece.icon
+                }
               </div>
               <div style={{ fontSize: "0.38rem", letterSpacing: "1px", textTransform: "uppercase", color: isInPlace ? "rgba(200,134,10,0.65)" : "rgba(232,220,200,0.3)", fontFamily: "monospace" }}>
                 {i + 1}
@@ -191,7 +194,10 @@ function PuzzlePiece({ index, pieceIndex, isSelected, isSolved, onSelect, disabl
     }}>
       {isSelected && <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at center, rgba(233,30,140,0.2) 0%, transparent 70%)", pointerEvents: "none" }} />}
       <div style={{ fontSize: content.isCenter ? "1rem" : "1.6rem", fontWeight: content.isCenter ? "900" : "normal", color: isSelected ? "#fff" : isCorrect ? "#C8860A" : "#e8dcc8", transition: "all 0.25s", lineHeight: 1, marginBottom: "3px" }}>
-        {content.icon}
+        {content.isImage
+          ? <img src={content.icon} alt="Logo" style={{ width: "48px", height: "48px", objectFit: "contain", filter: isCorrect ? "none" : "brightness(0.8)" }} />
+          : content.icon
+        }
       </div>
       <div style={{ fontSize: "0.5rem", color: isCorrect ? "rgba(200,134,10,0.8)" : "rgba(232,220,200,0.5)", letterSpacing: "2px", textTransform: "uppercase" }}>
         {content.label}
