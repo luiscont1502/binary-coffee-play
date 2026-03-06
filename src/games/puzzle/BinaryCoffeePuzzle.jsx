@@ -202,93 +202,216 @@ function PuzzlePiece({ index, pieceIndex, isSelected, isSolved, onSelect, disabl
   );
 }
 
+const SUPABASE_URL = "https://etxkdzwzeowufgwbotrn.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0eGtkend6ZW93dWZnd2JvdHJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MzMzMjEsImV4cCI6MjA4ODQwOTMyMX0.2aFSp4DFgCjoBQixZVo139-eSEbzyzPdxe7ESYpiE_8";
+
+async function saveToSupabase(data) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/jugadoras`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": SUPABASE_KEY,
+      "Authorization": `Bearer ${SUPABASE_KEY}`,
+      "Prefer": "return=minimal",
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Error al guardar");
+}
+
 function CouponModal({ onClose, moves, elapsed, tier }) {
-  const [copied, setCopied] = useState(false);
+  // step: "coupon" → descuento ganado + opción suscribirse
+  //       "form"   → formulario para recibir ofertas
+  //       "done"   → confirmación registro
+  const [step, setStep] = useState("coupon");
+  const [nombre, setNombre] = useState("");
+  const [email, setEmail] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const formatTime = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
+  const handleSubmit = async () => {
+    if (!nombre.trim() || !email.trim() || !telefono.trim()) { setError("Completa todos los campos."); return; }
+    if (!/\S+@\S+\.\S+/.test(email)) { setError("Ingresa un email válido."); return; }
+    setError(""); setLoading(true);
+    try {
+      await saveToSupabase({ nombre: nombre.trim(), email: email.trim(), telefono: telefono.trim(), descuento: tier.discount, codigo: tier.code });
+      setStep("done");
+    } catch { setError("Problema al guardar. Intenta de nuevo."); }
+    finally { setLoading(false); }
+  };
+
+  const inputStyle = {
+    width: "100%", padding: "11px 13px",
+    background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
+    borderRadius: "10px", color: "#f5f0e8", fontSize: "0.88rem", outline: "none",
+    fontFamily: "'Georgia', serif", boxSizing: "border-box",
+  };
+
+  const trophyIcon = elapsed <= 6 ? "⚡" : elapsed <= 12 ? "🔥" : elapsed <= 18 ? "✨" : "💜";
+
+  // Bloque de cupón reutilizable
+  const CuponBlock = () => (
+    <div style={{ background: `linear-gradient(135deg, ${tier.bg}, rgba(0,0,0,0.05))`, border: `2px solid ${tier.color}77`, borderRadius: "16px", padding: "16px 14px", marginBottom: "14px" }}>
+      <div style={{ fontSize: "3.8rem", fontWeight: "900", fontFamily: "monospace", color: tier.color, lineHeight: 1, textShadow: `0 0 28px ${tier.color}66` }}>
+        {tier.discount}%
+      </div>
+      <div style={{ fontSize: "1rem", fontWeight: "700", color: "#f5f0e8", marginTop: "2px" }}>☕ de descuento en bebidas</div>
+      <div style={{ fontSize: "0.65rem", color: `${tier.color}cc`, marginTop: "2px" }}>en cualquier bebida del menú</div>
+      <div style={{ borderTop: `1px dashed ${tier.color}44`, margin: "10px 0 8px" }} />
+      <div style={{ fontSize: "0.48rem", color: `${tier.color}77`, letterSpacing: "3px", textTransform: "uppercase", marginBottom: "4px" }}>código</div>
+      <div style={{ fontFamily: "monospace", fontSize: "1.6rem", fontWeight: "900", color: tier.color, letterSpacing: "6px", textShadow: `0 0 12px ${tier.color}44` }}>
+        {tier.code}
+      </div>
+    </div>
+  );
+
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(5,8,25,0.93)", backdropFilter: "blur(10px)", padding: "20px" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(5,8,25,0.93)", backdropFilter: "blur(10px)", padding: "16px" }}>
       <div style={{
         background: "linear-gradient(145deg, #0a0f2e 0%, #1a0a2e 50%, #0a1a2e 100%)",
-        border: `1px solid ${tier.color}55`, borderRadius: "28px", padding: "44px 26px 28px",
+        border: `1px solid ${tier.color}55`, borderRadius: "26px", padding: "44px 24px 26px",
         maxWidth: "340px", width: "100%", textAlign: "center", position: "relative",
-        boxShadow: `0 30px 80px rgba(0,0,0,0.85), 0 0 50px ${tier.color}18`,
+        boxShadow: `0 30px 80px rgba(0,0,0,0.85), 0 0 50px ${tier.color}15`,
         animation: "modalPop 0.5s cubic-bezier(0.34,1.56,0.64,1)",
+        maxHeight: "92vh", overflowY: "auto",
       }}>
+        {/* Ícono flotante */}
         <div style={{
           position: "absolute", top: 0, left: "50%", transform: "translateX(-50%) translateY(-50%)",
-          width: "66px", height: "66px", borderRadius: "50%",
+          width: "62px", height: "62px", borderRadius: "50%",
           background: `linear-gradient(135deg, ${tier.color}, ${tier.color}99)`,
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: "28px", boxShadow: `0 8px 28px ${tier.color}55`,
-        }}>
-          {elapsed <= 6 ? "⚡" : elapsed <= 12 ? "🔥" : elapsed <= 18 ? "✨" : "💜"}
-        </div>
+          fontSize: "26px", boxShadow: `0 8px 28px ${tier.color}55`,
+        }}>{trophyIcon}</div>
 
-        <div style={{ display: "inline-block", padding: "4px 14px", borderRadius: "50px", background: tier.bg, border: `1px solid ${tier.color}55`, fontSize: "0.62rem", letterSpacing: "3px", color: tier.color, textTransform: "uppercase", fontFamily: "monospace", marginBottom: "10px" }}>
-          {tier.label}
-        </div>
-
-        <h2 style={{ fontFamily: "'Georgia', serif", fontSize: "1.4rem", color: "#f5f0e8", margin: "0 0 6px", lineHeight: 1.2 }}>
-          {tier.desc}<br /><span style={{ color: tier.color }}>¡Lo resolviste!</span>
-        </h2>
-
-        <div style={{ display: "flex", gap: "8px", margin: "12px 0", justifyContent: "center" }}>
-          {[{ icon: "🔄", val: moves, label: "movs" }, { icon: "⏱", val: formatTime(elapsed), label: "tiempo" }].map((s) => (
-            <div key={s.label} style={{ flex: 1, background: "rgba(255,255,255,0.05)", borderRadius: "10px", padding: "8px" }}>
-              <div style={{ fontSize: "0.9rem" }}>{s.icon}</div>
-              <div style={{ fontSize: "0.95rem", fontWeight: "700", color: tier.color, fontFamily: "monospace" }}>{s.val}</div>
-              <div style={{ fontSize: "0.48rem", color: "rgba(232,220,200,0.35)", letterSpacing: "1px", textTransform: "uppercase" }}>{s.label}</div>
+        {/* ── PASO 1: Descuento ganado ── */}
+        {step === "coupon" && (
+          <>
+            <div style={{ display: "inline-block", padding: "4px 14px", borderRadius: "50px", background: tier.bg, border: `1px solid ${tier.color}55`, fontSize: "0.6rem", letterSpacing: "3px", color: tier.color, textTransform: "uppercase", fontFamily: "monospace", marginBottom: "8px" }}>
+              {tier.label}
             </div>
-          ))}
-        </div>
-
-        <p style={{ color: "rgba(232,220,200,0.6)", fontSize: "0.82rem", margin: "0 0 16px", lineHeight: 1.5 }}>
-          Por el <strong style={{ color: "#e91e8c" }}>Día Internacional de la Mujer</strong>,<br />Binary & Coffee te regala:
-        </p>
-
-        {/* Cupón dinámico */}
-        <div style={{ background: `linear-gradient(135deg, ${tier.bg}, rgba(0,0,0,0.05))`, border: `2px dashed ${tier.color}77`, borderRadius: "16px", padding: "18px 14px", marginBottom: "14px" }}>
-          {/* Bloque principal: % + bebidas juntos y grandes */}
-          <div style={{ marginBottom: "12px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", marginBottom: "2px" }}>
-              <span style={{ fontSize: "4rem", fontWeight: "900", fontFamily: "monospace", color: tier.color, lineHeight: 1, textShadow: `0 0 30px ${tier.color}66` }}>
-                {tier.discount}%
-              </span>
+            <h2 style={{ fontFamily: "'Georgia', serif", fontSize: "1.3rem", color: "#f5f0e8", margin: "0 0 4px", lineHeight: 1.2 }}>
+              {tier.desc}<br /><span style={{ color: tier.color }}>¡Lo resolviste!</span>
+            </h2>
+            <div style={{ display: "flex", gap: "8px", margin: "10px 0 14px", justifyContent: "center" }}>
+              {[{ icon: "🔄", val: moves, label: "movs" }, { icon: "⏱", val: formatTime(elapsed), label: "tiempo" }].map((s) => (
+                <div key={s.label} style={{ flex: 1, background: "rgba(255,255,255,0.05)", borderRadius: "10px", padding: "7px" }}>
+                  <div style={{ fontSize: "0.85rem" }}>{s.icon}</div>
+                  <div style={{ fontSize: "0.88rem", fontWeight: "700", color: tier.color, fontFamily: "monospace" }}>{s.val}</div>
+                  <div style={{ fontSize: "0.44rem", color: "rgba(232,220,200,0.35)", letterSpacing: "1px", textTransform: "uppercase" }}>{s.label}</div>
+                </div>
+              ))}
             </div>
-            <div style={{
-              fontSize: "1rem", fontWeight: "700", color: "#f5f0e8",
-              letterSpacing: "1px", lineHeight: 1.2,
+
+            <CuponBlock />
+
+            {/* Instrucción mostrar en caja */}
+            <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", padding: "12px", marginBottom: "16px" }}>
+              <div style={{ fontSize: "1.5rem", marginBottom: "4px" }}>📱</div>
+              <div style={{ fontSize: "0.8rem", fontWeight: "700", color: "#f5f0e8", marginBottom: "3px" }}>Muestra esta pantalla al pagar</div>
+              <div style={{ fontSize: "0.7rem", color: "rgba(232,220,200,0.5)", lineHeight: 1.5 }}>
+                Presenta este descuento al cajero<br />para aplicar tu <strong style={{ color: tier.color }}>{tier.discount}% en bebidas</strong> ☕
+              </div>
+            </div>
+
+            {/* Botón opcional para recibir ofertas */}
+            <button onClick={() => setStep("form")} style={{
+              width: "100%", padding: "12px",
+              background: `linear-gradient(135deg, ${tier.color}, ${tier.color}bb)`,
+              color: "#fff", border: "none", borderRadius: "12px",
+              fontSize: "0.85rem", fontWeight: "700", cursor: "pointer", letterSpacing: "0.5px", marginBottom: "8px",
             }}>
-              ☕ de descuento en bebidas
+              🔔 Quiero recibir ofertas y descuentos
+            </button>
+            <button onClick={onClose} style={{ width: "100%", padding: "10px", background: "transparent", color: "rgba(232,220,200,0.35)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "12px", fontSize: "0.72rem", cursor: "pointer", marginBottom: "6px" }}>
+              No gracias, solo el descuento de hoy
+            </button>
+            <button onClick={onClose} style={{ width: "100%", padding: "10px", background: "transparent", color: "rgba(200,134,10,0.5)", border: "1px solid rgba(200,134,10,0.2)", borderRadius: "12px", fontSize: "0.72rem", cursor: "pointer" }}>
+              🔀 Jugar de nuevo
+            </button>
+          </>
+        )}
+
+        {/* ── PASO 2: Formulario suscripción ── */}
+        {step === "form" && (
+          <>
+            <div style={{ fontSize: "1.6rem", marginBottom: "6px" }}>🔔</div>
+            <h2 style={{ fontFamily: "'Georgia', serif", fontSize: "1.2rem", color: "#f5f0e8", margin: "0 0 4px" }}>
+              ¡Recibe ofertas<br /><span style={{ color: tier.color }}>exclusivas!</span>
+            </h2>
+            <p style={{ color: "rgba(232,220,200,0.5)", fontSize: "0.75rem", margin: "0 0 16px", lineHeight: 1.5 }}>
+              Regístrate y te avisamos de<br />descuentos, promos y novedades ☕
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "9px", marginBottom: "12px", textAlign: "left" }}>
+              {[
+                { label: "Nombre", placeholder: "Tu nombre", value: nombre, set: setNombre, type: "text" },
+                { label: "Email", placeholder: "tu@email.com", value: email, set: setEmail, type: "email" },
+                { label: "Teléfono", placeholder: "+593 99 999 9999", value: telefono, set: setTelefono, type: "tel" },
+              ].map((f) => (
+                <div key={f.label}>
+                  <div style={{ fontSize: "0.55rem", color: "rgba(232,220,200,0.4)", letterSpacing: "2px", textTransform: "uppercase", marginBottom: "4px", fontFamily: "monospace" }}>{f.label}</div>
+                  <input style={inputStyle} placeholder={f.placeholder} type={f.type} value={f.value} onChange={(e) => f.set(e.target.value)} />
+                </div>
+              ))}
             </div>
-            <div style={{ fontSize: "0.7rem", color: `${tier.color}cc`, marginTop: "3px" }}>
-              en cualquier bebida del menú
+
+            {error && (
+              <div style={{ background: "rgba(255,68,68,0.1)", border: "1px solid rgba(255,68,68,0.25)", borderRadius: "8px", padding: "8px", marginBottom: "10px", fontSize: "0.72rem", color: "#ff9999" }}>
+                {error}
+              </div>
+            )}
+
+            <button onClick={handleSubmit} disabled={loading} style={{
+              width: "100%", padding: "13px",
+              background: loading ? "rgba(255,255,255,0.08)" : `linear-gradient(135deg, ${tier.color}, ${tier.color}bb)`,
+              color: "#fff", border: "none", borderRadius: "12px",
+              fontSize: "0.88rem", fontWeight: "700", cursor: loading ? "default" : "pointer",
+              letterSpacing: "0.5px", marginBottom: "8px",
+            }}>
+              {loading ? "Guardando..." : "✅ Suscribirme"}
+            </button>
+            <button onClick={() => setStep("coupon")} style={{ width: "100%", padding: "10px", background: "transparent", color: "rgba(232,220,200,0.35)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "12px", fontSize: "0.72rem", cursor: "pointer" }}>
+              ← Volver
+            </button>
+          </>
+        )}
+
+        {/* ── PASO 3: Confirmación ── */}
+        {step === "done" && (
+          <>
+            <div style={{ display: "inline-block", padding: "4px 14px", borderRadius: "50px", background: "rgba(39,174,96,0.15)", border: "1px solid rgba(39,174,96,0.4)", fontSize: "0.6rem", letterSpacing: "3px", color: "#2ecc71", textTransform: "uppercase", fontFamily: "monospace", marginBottom: "8px" }}>
+              ¡Registrada! 🎉
             </div>
-          </div>
+            <h2 style={{ fontFamily: "'Georgia', serif", fontSize: "1.3rem", color: "#f5f0e8", margin: "0 0 4px" }}>
+              ¡Listo, <span style={{ color: tier.color }}>{nombre}!</span>
+            </h2>
+            <p style={{ color: "rgba(232,220,200,0.5)", fontSize: "0.75rem", margin: "0 0 14px" }}>
+              Te avisaremos de ofertas y descuentos 🌸
+            </p>
 
-          {/* Separador */}
-          <div style={{ borderTop: `1px dashed ${tier.color}44`, margin: "10px 0" }} />
+            <CuponBlock />
 
-          {/* Código */}
-          <div style={{ fontSize: "0.52rem", color: `${tier.color}88`, letterSpacing: "3px", textTransform: "uppercase", marginBottom: "5px" }}>tu código de descuento</div>
-          <div style={{ fontFamily: "monospace", fontSize: "1.6rem", fontWeight: "900", color: tier.color, letterSpacing: "6px", textShadow: `0 0 15px ${tier.color}44` }}>
-            {tier.code}
-          </div>
-        </div>
+            <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", padding: "12px", marginBottom: "14px" }}>
+              <div style={{ fontSize: "1.5rem", marginBottom: "4px" }}>📱</div>
+              <div style={{ fontSize: "0.8rem", fontWeight: "700", color: "#f5f0e8", marginBottom: "3px" }}>Muestra esta pantalla al pagar</div>
+              <div style={{ fontSize: "0.7rem", color: "rgba(232,220,200,0.5)", lineHeight: 1.5 }}>
+                Presenta al cajero para aplicar<br />tu <strong style={{ color: tier.color }}>{tier.discount}% de descuento en bebidas</strong> ☕
+              </div>
+            </div>
 
-        <button onClick={() => { navigator.clipboard?.writeText(tier.code).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 2000); }} style={{
-          width: "100%", padding: "13px",
-          background: copied ? "linear-gradient(135deg, #27ae60, #1e8449)" : `linear-gradient(135deg, ${tier.color}, ${tier.color}bb)`,
-          color: "#fff", border: "none", borderRadius: "12px",
-          fontSize: "0.85rem", fontWeight: "700", cursor: "pointer", letterSpacing: "1px", marginBottom: "8px", transition: "all 0.3s",
-        }}>
-          {copied ? "✓ ¡Copiado!" : "📋 Copiar código"}
-        </button>
-
-        <button onClick={onClose} style={{ width: "100%", padding: "11px", background: "transparent", color: "rgba(232,220,200,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", fontSize: "0.75rem", cursor: "pointer", letterSpacing: "1px" }}>
-          Jugar de nuevo
-        </button>
+            <button onClick={onClose} style={{
+              width: "100%", padding: "12px",
+              background: `linear-gradient(135deg, ${tier.color}, ${tier.color}bb)`,
+              color: "#fff", border: "none", borderRadius: "12px",
+              fontSize: "0.85rem", fontWeight: "700", cursor: "pointer",
+            }}>
+              🔀 Jugar de nuevo
+            </button>
+          </>
+        )}
       </div>
       <style>{`@keyframes modalPop { 0% { transform: scale(0.6) translateY(40px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 1; } }`}</style>
     </div>
